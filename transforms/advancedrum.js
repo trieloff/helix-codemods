@@ -1,6 +1,18 @@
 // workaround for __dirname in esm
 import { resolve } from 'path';
-import { readFileSync } from 'fs';
+import { readFileSync, writeFileSync } from 'fs';
+
+function appendLineToFile(filePath, line) {
+  const file = readFileSync(filePath, 'utf8');
+  const lines = file.split('\n');
+  lines.push(line);
+  writeFileSync(filePath, lines.join('\n'));
+}
+
+function logMessage(...message) {
+  console.log(...message);
+  appendLineToFile(resolve('.', './log.txt'), ' - ' + message.join(' '));
+}
 
 function addRumAddition(j, rootSource, sampleRUM, rumAddition) {
   const source = readFileSync(resolve(__dirname, `./templates/rum-${rumAddition}.js`), 'utf8');
@@ -19,11 +31,11 @@ function addRumAddition(j, rootSource, sampleRUM, rumAddition) {
     .replaceWith(replacementAssignment.toSource());
 
   if (found.length === 0) {
-    console.log('adding missing rum addition', rumAddition);
+    logMessage('adding missing rum addition', rumAddition);
     sampleRUM.insertAfter(replacementAssignment.toSource());
     if (rumAddition === 'observe') {
       // also invoke the observer after main blocks have been decorated
-      console.log('adding observe invocations');
+      logMessage('adding observe invocations');
 
       rootSource
         .find(j.CallExpression)
@@ -89,8 +101,6 @@ module.exports = function (fileInfo, api, options) {
 
     replaceGenericListener(rootSource, j, 'window', 'unhandledrejection',
       `sampleRUM('error', { source: event.reason.sourceURL, target: event.reason.line })`);
-
-
   }
 
   //console.log(rootSource.toSource());
@@ -115,7 +125,7 @@ function replaceGenericListener(rootSource, j, target, event, source) {
   // console.log('replaced', replaced.length === 1 && j(replaced.get().parent).toSource());
 
   if (replaced.length === 0) {
-    console.log('adding ' + event + ' listener');
+    logMessage('adding event listener for', event);
     rootSource
       .find(j.CallExpression)
       .filter(path => path.value.callee.name === 'sampleRUM')
@@ -136,13 +146,16 @@ function replaceClickListener(rootSource, j) {
 }
 
 function replaceWebVitalsLoader(sampleRUM, j) {
-  sampleRUM
+  const replaced = sampleRUM
     .find(j.CallExpression)
     .filter(path => path.value.callee.object)
     .filter(path => path.value.callee.object.type === 'ImportExpression')
     .filter(path => path.value.callee.object.source.value && path.value.callee.object.source.value.includes('web-vitals-module'))
     .map(path => path.parent)
     .replaceWith(readFileSync(resolve(__dirname, `./templates/rum-web-vitals-loader.js`), 'utf8'));
+  if (replaced.length) {
+    logMessage('update web vitals loader to helix-provided version');
+  }
 }
 
 function extractGeneration(rootSource, j) {
@@ -187,5 +200,6 @@ function extractGeneration(rootSource, j) {
         )
       ));
     });
+    logMessage('set RUM_GENERATION in user code');
   }
 }
