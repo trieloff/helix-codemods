@@ -131,7 +131,7 @@ function replaceGenericListener(rootSource, j, target, event, source) {
       .filter(path => path.value.callee.name === 'sampleRUM')
       .filter(path => path.value.arguments[0].value === 'top')
       .map(path => path.parent)
-      .insertAfter(`${target}.addEventListener('${event}', event => {
+      .insertAfter(`${target}.addEventListener('${event}', (event) => {
   ${source}
 });`);
   } else {
