@@ -97,10 +97,10 @@ module.exports = function (fileInfo, api, options) {
     }
 
     replaceGenericListener(rootSource, j, 'window', 'error',
-      `sampleRUM('error', { source: event.filename, target: event.lineno })`);
+      `sampleRUM('error', { source: event.filename, target: event.lineno });`);
 
     replaceGenericListener(rootSource, j, 'window', 'unhandledrejection',
-      `sampleRUM('error', { source: event.reason.sourceURL, target: event.reason.line })`);
+      `sampleRUM('error', { source: event.reason.sourceURL, target: event.reason.line });`);
   }
 
   //console.log(rootSource.toSource());
@@ -118,8 +118,8 @@ function replaceGenericListener(rootSource, j, target, event, source) {
     //.find(j.CallExpression)
     //.filter(path => path.value.callee.name === 'sampleRUM')
     .map(path => path.parent)
-    .replaceWith(`${target}.addEventListener('${event}', event => {
-      ${source}
+    .replaceWith(`${target}.addEventListener('${event}', (event) => {
+  ${source}
 });`);
 
   // console.log('replaced', replaced.length === 1 && j(replaced.get().parent).toSource());
@@ -140,7 +140,7 @@ function replaceGenericListener(rootSource, j, target, event, source) {
 }
 
 function replaceClickListener(rootSource, j) {
-  const source = `sampleRUM('click', { target: sampleRUM.targetselector(event.target), source: sampleRUM.sourceselector(event.target) })`;
+  const source = `sampleRUM('click', { target: sampleRUM.targetselector(event.target), source: sampleRUM.sourceselector(event.target) });`;
 
   return replaceGenericListener(rootSource, j, 'document', 'click', source);
 }
